@@ -99,7 +99,7 @@ def list_emissions(plugin, item_id, category_url, page, **kwargs):
 
 @Route.register
 def list_emissions_old(plugin, item_id, category_url, page, **kwargs):
-    resp = urlquick.get(category_url % page, header=GENERIC_HEADERS, max_age=-1)
+    resp = urlquick.get(category_url % page, headers=GENERIC_HEADERS, max_age=-1)
     parser = htmlement.HTMLement()
     parser.feed(resp.json())
     data = parser.close()
