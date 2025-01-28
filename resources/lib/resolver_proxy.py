@@ -594,7 +594,7 @@ def get_arte_video_stream(plugin,
                           video_id,
                           download_mode=False):
     url = URL_REPLAY_ARTE % (desired_language, video_id)
-    j = urlquick.get(url).json()
+    j = urlquick.get(url, headers=GENERIC_HEADERS, max_age=-1).json()
 
     language = []
     for stream in j['data']['attributes']['streams']:
