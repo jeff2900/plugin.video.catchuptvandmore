@@ -547,6 +547,8 @@ def get_francetv_video_stream(plugin,
             license_key = '|'.join(license_config.values())
         else:
             final_video_url = urlquick.get(url_token, params=params, headers=GENERIC_HEADERS, max_age=-1).json()['url']
+            if download_mode:
+                return download.download_video(final_video_url)
 
         return get_stream_with_quality(plugin,
                                        video_url=final_video_url,
