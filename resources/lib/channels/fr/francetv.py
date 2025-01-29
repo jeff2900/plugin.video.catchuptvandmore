@@ -37,9 +37,9 @@ except ImportError:
 # Channels:
 #     * france.tv (https://www.france.tv/)
 
+URL_ROOT = 'https://www.france.tv'
 URL_API_MOBILE = utils.urljoin_partial("https://api-mobile.yatta.francetv.fr/")
 URL_API_FRONT = utils.urljoin_partial("http://api-front.yatta.francetv.fr")
-URL_LIVE = 'https://www.france.tv/%s/direct.html'
 
 
 @Route.register
@@ -407,11 +407,13 @@ def get_video_url(plugin,
 
 @Resolver.register
 def get_live_url(plugin, item_id, **kwargs):
+    resp = urlquick.get(URL_ROOT, headers={'User-Agent': web_utils.get_random_windows_ua()}, max_age=-1)
+    link_chunks = re.compile(r'script src="(/_next/static/chunks/6289-.*?\.js)" async').findall(resp.text)
+    url_chunks = URL_ROOT + link_chunks[0]
 
-    if item_id in ('spectacles-et-culture', 'france-2', 'france-3', 'france-4', 'france-5', 'franceinfo', 'paris-h24'):
-        resp = urlquick.get(URL_LIVE % item_id, headers={'User-Agent': web_utils.get_random_windows_ua()}, max_age=-1)
-        broadcast_id = re.compile(r'videoId\"\:\"(.*?)\"', re.DOTALL).findall(resp.text)[0]
-        return resolver_proxy.get_francetv_live_stream(plugin, broadcast_id)
-
-    broadcast_id = 'SIM_France%s'
-    return resolver_proxy.get_francetv_live_stream(plugin, broadcast_id % item_id.split('-')[1])
+    resp = urlquick.get(url_chunks, headers={'User-Agent': web_utils.get_random_windows_ua()}, max_age=-1)
+    chunk = re.compile(r'([A-Za-z0-9-"]+?):{label:"(.+?)",playerId:"(\w+?-\w+?-\w+?-\w+?-\w+?)"}').findall(resp.text)
+    for channels_id, channels_label, broadcast_id in chunk:
+        channel_id = channels_id.strip('\"')
+        if item_id == channel_id:
+            return resolver_proxy.get_francetv_live_stream(plugin, broadcast_id)
