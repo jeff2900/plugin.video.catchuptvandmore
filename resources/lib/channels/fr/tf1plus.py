@@ -21,6 +21,10 @@ from kodi_six import xbmcgui, xbmcplugin
 from resources.lib import resolver_proxy, web_utils
 from resources.lib.addon_utils import get_item_media_path
 from resources.lib.menu_utils import item_post_treatment
+try:
+    from urllib.parse import urlencode
+except ImportError:
+    from urllib import urlencode
 
 TF1PLUS_ROOT = "https://www.tf1.fr"
 
@@ -417,16 +421,39 @@ def get_live_url(plugin, item_id, **kwargs):
         return False
 
     video_url = json_parser['delivery']['url']
-    license_headers = {
+    input_stream_properties = {'license_type': None}
+    manifest_headers = {
         'Content-Type': '',
         'User-Agent': web_utils.get_random_windows_ua()
     }
-
-    if 'drms' in json_parser['delivery']:
-        license_url = json_parser['delivery']['drms'][0]['url']
-        license_headers.update({'Authorization': json_parser['delivery']['drms'][0]['h'][0]['v']})
+    license_headers = manifest_headers
+    if "drms" in json_parser["delivery"]:
+        for drm in json_parser["delivery"]["drms"]:
+            if "widevine" == drm["name"]:
+                license_srv_url = drm["url"]
+                if "h" in drm:
+                    license_headers.update({'Authorization': drm["h"][0]["v"]})
+                license_config = {  # for Python < v3.7 you should use OrderedDict to keep order
+                    'license_server_url': license_srv_url,
+                    'headers': urlencode(license_headers),
+                    'post_data': 'R{SSM}',
+                    'response_data': 'R'
+                }
+                license_url = '|'.join(license_config.values())
+                input_stream_properties = {'license_type': 'com.widevine.alpha'}
+                break
+    elif 'drm-server' in json_parser["delivery"]:
+        license_srv_url = json_parser['delivery']['drm-server']
+        license_config = {  # for Python < v3.7 you should use OrderedDict to keep order
+            'license_server_url': license_srv_url,
+            'headers': urlencode(license_headers),
+            'post_data': 'R{SSM}',
+            'response_data': 'R'
+        }
+        license_url = '|'.join(license_config.values())
+        input_stream_properties = {'license_type': 'com.widevine.alpha'}
     else:
-        license_url = URL_LICENCE_KEY % video_id
+        license_url = None
 
     if video_id == 'L_TF1-SERIES-FILMS':
         workaround = None
@@ -435,4 +462,5 @@ def get_live_url(plugin, item_id, **kwargs):
 
     return resolver_proxy.get_stream_with_quality(plugin, video_url=video_url,
                                                   manifest_type="mpd", license_url=license_url,
-                                                  workaround=workaround, headers=license_headers)
+                                                  input_stream_properties=input_stream_properties,
+                                                  workaround=workaround, headers=manifest_headers)
