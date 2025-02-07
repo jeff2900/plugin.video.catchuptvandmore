@@ -195,13 +195,13 @@ def get_video_url(plugin, item_id, video_url, download_mode=False, **kwargs):
 
 @Resolver.register
 def get_live_url(plugin, item_id, **kwargs):
-    if URLLIB3_VERSION == "2.2.3":
-        url_req = Request(URL_LIVE_CNEWS, headers=GENERIC_HEADERS, method='GET')
-        root = urlopen(url_req).read().decode('utf8')
-    else:
-        root = urlquick.get(URL_LIVE_CNEWS, headers=GENERIC_HEADERS, verify=False, max_age=-1).parse()
-
     try:
+        if URLLIB3_VERSION == "2.2.3":
+            url_req = Request(URL_LIVE_CNEWS, headers=GENERIC_HEADERS, method='GET')
+            root = urlopen(url_req).read().decode('utf8')
+        else:
+            resp = urlquick.get(URL_LIVE_CNEWS, headers=GENERIC_HEADERS, verify=False, max_age=-1)
+            root = resp.parse()
         live_id = root.find(".//div[@data-muted='true']").get('data-videoid')
     except Exception:
         live_id = 'x3b68jn'
