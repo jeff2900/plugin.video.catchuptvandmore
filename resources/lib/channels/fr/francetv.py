@@ -407,13 +407,13 @@ def get_video_url(plugin,
 
 @Resolver.register
 def get_live_url(plugin, item_id, **kwargs):
-    resp = urlquick.get(URL_ROOT, headers={'User-Agent': web_utils.get_random_windows_ua()}, max_age=-1)
-    link_chunks = re.compile(r'script src="(/_next/static/chunks/6289-.*?\.js)" async').findall(resp.text)
-    url_chunks = URL_ROOT + link_chunks[0]
+    params = {'platform': 'apps'}
+    resp = urlquick.get(URL_API_MOBILE('/apps/channels/%s' % item_id), params=params, max_age=-1)
+    json_parser = json.loads(resp.text)
 
-    resp = urlquick.get(url_chunks, headers={'User-Agent': web_utils.get_random_windows_ua()}, max_age=-1)
-    chunk = re.compile(r'([A-Za-z0-9-"]+?):{label:"(.+?)",playerId:"(\w+?-\w+?-\w+?-\w+?-\w+?)"}').findall(resp.text)
-    for channels_id, channels_label, broadcast_id in chunk:
-        channel_id = channels_id.strip('\"')
-        if item_id == channel_id:
-            return resolver_proxy.get_francetv_live_stream(plugin, broadcast_id)
+    for collection in json_parser['collections']:
+        if 'live' == collection['type']:
+            channel_path = collection["items"][0]["channel"]["channel_path"]
+            broadcast_id = collection["items"][0]["channel"]["si_id"]
+            if channel_path == item_id:
+                return resolver_proxy.get_francetv_live_stream(plugin, broadcast_id)
